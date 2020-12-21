@@ -1,0 +1,30 @@
+1-Create a non-root account to run the Nessus service.
+    sudo useradd -r nonprivuser
+
+2-Remove 'world' permissions on Nessus binaries in the /sbin directory.
+    sudo chmod 750 /opt/nessus/sbin/*
+
+3-Change ownership of /opt/nessus to the non-root user.
+      sudo chown nonprivuser:nonprivuser -R /opt/nessus
+
+4- If this is only a manager, and you do not want this instance of Nessus install to perform scans, you need to provide it only with the capability to change its resource limits.
+    sudo setcap "cap_sys_resource+eip" /opt/nessus/sbin/nessusd
+    sudo setcap "cap_sys_resource+eip" /opt/nessus/sbin/nessus-service
+                or
+5- If you want this instance of Nessus to perform scans, you need to add additional permissions to allow packet forgery and enabling promiscuous mode on the interface.
+    sudo setcap "cap_net_admin,cap_net_raw,cap_sys_resource+eip" /opt/nessus/sbin/nessusd
+    sudo setcap "cap_net_admin,cap_net_raw,cap_sys_resource+eip" /opt/nessus/sbin/nessus-service
+ 
+ 6- Add the following line to the /etc/init.d/nessusd script:
+     start-stop-daemon --start --oknodo --user nonprivuser --name nessus --pidfile --chuid nonprivuser --startas /opt/nessus/sbin/nessus-service -- -q -D --no-root
+      
+      start() {
+    KIND="$NESSUS_NAME"
+    echo -n $"Starting $NESSUS_NAME : "
+    start-stop-daemon --start --oknodo --user nonprivuser --name nessus --pidfile --chuid nonprivuser --startas /opt/nessus/sbin/nessus-service -- -q -D --no-root
+    echo "."
+    return 0
+}
+
+7-Start nessusd.In this step, Nessus starts as root, but init.d starts it as nonprivuser.
+     sudo service nessusd start
